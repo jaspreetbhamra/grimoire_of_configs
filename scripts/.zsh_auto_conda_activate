@@ -1,0 +1,48 @@
+# ~/.zsh_auto_conda_env
+
+# Auto-activate conda env for the current git repo
+conda_activate() {
+  local env_name=""
+  local repo_name
+
+  # Only run if this is a git repo
+  if [[ ! -d ".git" ]]; then
+    return
+  fi
+
+  # If environment.yml exists, read env name
+  if [[ -f "environment.yml" ]]; then
+    env_name=$(grep -E '^name:' environment.yml | awk '{print $2}')
+  fi
+
+  # Otherwise, fallback to repo (directory) name
+  if [[ -z "$env_name" ]]; then
+    repo_name=$(basename "$PWD")
+    env_name="${repo_name//-/_}"   # replace - with _
+  fi
+
+  # If already in this env, do nothing
+  if [[ "$CONDA_DEFAULT_ENV" == "$env_name" ]]; then
+    return
+  fi
+
+  # If another env is active, deactivate first
+  if [[ -n "$CONDA_DEFAULT_ENV" ]]; then
+    echo "🔸 Deactivating $CONDA_DEFAULT_ENV"
+    conda deactivate
+  fi
+
+  # Try to activate the desired env
+  if conda info --envs | awk '{print $1}' | grep -qx "$env_name"; then
+    echo "🔹 Activating conda environment: $env_name"
+    conda activate "$env_name"
+  else
+    echo "⚠️ Conda environment '$env_name' not found."
+  fi
+}
+
+# Hook: run whenever you cd
+chpwd() {
+  conda_activate
+}
+

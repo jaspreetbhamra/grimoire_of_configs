@@ -1,0 +1,53 @@
+# ~/.zsh_conda_utils
+
+# Safely remove an environment defined in environment.yml
+conda_nuke() {
+  if [[ ! -f "environment.yml" ]]; then
+    echo "❌ No environment.yml found in current directory. Aborting."
+    return 1
+  fi
+
+  ENV_NAME=$(grep '^name:' environment.yml | awk '{print $2}')
+
+  if [[ -z "$ENV_NAME" ]]; then
+    echo "❌ Could not parse environment name from environment.yml"
+    return 1
+  fi
+
+  if [[ "$ENV_NAME" == "base" ]]; then
+    echo "🚨 Refusing to remove the base environment. Aborting."
+    return 1
+  fi
+
+  read -r "?⚠️  Are you sure you want to remove environment '$ENV_NAME'? [y/N] " confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    echo "❎ Aborted."
+    return 0
+  fi
+
+  echo "🔻 Switching to base and removing environment: $ENV_NAME"
+  conda activate base
+  conda env remove -n "$ENV_NAME"
+}
+
+# Safely rebuild environment from environment.yml
+conda_rebuild() {
+  if [[ ! -f "environment.yml" ]]; then
+    echo "❌ No environment.yml found in current directory. Aborting."
+    return 1
+  fi
+
+  ENV_NAME=$(grep '^name:' environment.yml | awk '{print $2}')
+
+  if [[ -z "$ENV_NAME" ]]; then
+    echo "❌ Could not parse environment name from environment.yml"
+    return 1
+  fi
+
+  echo "🔄 Rebuilding conda environment: $ENV_NAME"
+  conda deactivate
+  conda env remove -n "$ENV_NAME" 2>/dev/null
+  conda env create -f environment.yml
+  conda activate "$ENV_NAME"
+}
+
